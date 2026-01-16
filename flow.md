@@ -14,10 +14,12 @@ Named after Ponce City Market, Atlanta:
 ---
 
 ## Phase 1: iOS MVP (Complete)
-- [x] Bluetooth (FTMS + Heart Rate)
+- [x] Bluetooth (FTMS + Standalone HR)
 - [x] Dashboard (Power, Cadence, HR)
 - [x] Manual ERG Control
 - [x] Safety Limits (Wattage Ceiling, Low Cadence Alert)
+- [x] Fix: Cadence parsing resolved (multi-byte flag interpretation)
+- [x] Fix: Standalone HR monitor scanning (UUID 180D)
 
 ## Phase 2: Local Logging (Complete)
 - [x] Ride Recording (Start/Stop)
@@ -29,12 +31,13 @@ Named after Ponce City Market, Atlanta:
 - [x] Models: User, Practitioner, Prescription
 - [x] REST API Controllers
 - [x] CORS Support
+- [x] Fix: Automatic signing and permissions in Xcode
 
 ### React Web Portal
 - [x] Vite + TailwindCSS v3
 - [x] Patient Management (CRUD)
 - [x] Prescription Creation
-- [x] "Ponce" Design Theme
+- [x] "Ponce" Design Theme (Ponce City Market, Atlanta)
 
 ---
 
@@ -43,23 +46,11 @@ Named after Ponce City Market, Atlanta:
 ```
 SmartTrainerPro/
 ├── ios/
-│   ├── SmartTrainerPro.xcodeproj/   # ← Open this in Xcode
+│   ├── SmartTrainerPro.xcodeproj/   # Open in Xcode
 │   └── SmartTrainerPro/
-│       ├── SmartTrainerProApp.swift
-│       ├── ContentView.swift
-│       ├── BluetoothManager.swift
-│       ├── Info.plist
-│       ├── SmartTrainerPro.entitlements
-│       ├── Models/
-│       │   └── WorkoutManager.swift
-│       └── Views/
-│           └── HistoryView.swift
-│
-├── web/
-│   ├── SmartTrainerPro.Api/         # .NET Backend (port 5223)
-│   └── physio-portal/               # React Frontend (port 5174)
-│
-└── flow.md
+│       ├── Info.plist               # Bluetooth permissions
+│       ├── BluetoothManager.swift   # FTMS + HR Logic
+│       └── ...
 ```
 
 ---

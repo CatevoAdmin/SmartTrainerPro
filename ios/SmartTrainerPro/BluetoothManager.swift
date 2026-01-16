@@ -18,8 +18,9 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     
     func startScanning() {
         guard centralManager.state == .poweredOn else { return }
-        print("Starting scan for FTMS devices...")
-        centralManager.scanForPeripherals(withServices: [fitnessMachineServiceUUID], options: nil)
+        print("Starting scan for FTMS and HR devices...")
+        // Scan for both FTMS trainers AND standalone Heart Rate monitors
+        centralManager.scanForPeripherals(withServices: [fitnessMachineServiceUUID, heartRateServiceUUID], options: nil)
         connectionStatus = "Scanning..."
     }
     
@@ -148,7 +149,7 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
         // OpCode 0x00: Request Control
         let command: [UInt8] = [0x00]
         let data = Data(command)
-        peripheral.writeValue(data, for: characteristic, type: .write)
+        peripheral.writeValue(data, for: characteristic, type: .withResponse)
         print("Sent Request Control")
     }
     
@@ -170,7 +171,7 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
         withUnsafeBytes(of: powerValue) { command.append(contentsOf: $0) }
         
         let data = Data(command)
-        peripheral.writeValue(data, for: characteristic, type: .write)
+        peripheral.writeValue(data, for: characteristic, type: .withResponse)
         print("Sent Set Target Power: \(safePower)W")
     }
     
@@ -255,46 +256,31 @@ class BluetoothManager: NSObject, ObservableObject, CBCentralManagerDelegate, CB
         let flags = data.prefix(2).withUnsafeBytes { $0.load(as: UInt16.self) }
         var offset = 2
         
-        // Bit 0: More Data (Ignored for now)
-        // Bit 1: Average Speed (UInt16, 0.01 km/h) -> if 0, not present
-        let speedPresent = (flags & 0x02) != 0
-        // Bit 2: Instantaneous Cadence (UInt16, 0.5 rpm)
-        let cadencePresent = (flags & 0x04) != 0
+        // FTMS Indoor Bike Data flags:
+        // Bit 0: More Data
+        // Bit 1: Average Speed Present (note: if bit is 0, Instantaneous Speed IS present)
+        // Bit 2: Instantaneous Cadence Present
+        // Bit 3: Average Cadence Present
+        // Bit 4: Total Distance Present
+        // Bit 5: Resistance Level Present
+        // Bit 6: Instantaneous Power Present
         
-        if speedPresent {
+        // Speed: If bit 1 is 0, instantaneous speed is present (2 bytes)
+        // Note: bit meaning is inverted for speed!
+        if (flags & 0x01) == 0 {
+            // Speed not excluded, skip 2 bytes (instantaneous speed)
             offset += 2
         }
         
-        if cadencePresent {
-            if data.count >= offset + 2 {
-                let cadenceValue = data.subdata(in: offset..<offset+2).withUnsafeBytes { $0.load(as: UInt16.self) }
-                let cadence = Int(Double(cadenceValue) * 0.5)
-                DispatchQueue.main.async {
-                    self.currentCadence = cadence
-                }
-                offset += 2
-            }
-        }
-        
-        // Bit 3: Average Cadence (Ignored)
-        // Bit 4: Total Distance (Ignored)
-        // Bit 5: Resistance Level (Ignored)
-        // Bit 6: Instantaneous Power (SInt16, 1 Watt)
-//        let powerPresent = (flags & 0x40) != 0
-        
-        // Reset offset to 2
-        offset = 2
-        
-        if (flags & 0x02) != 0 { offset += 2 } // Speed
-        
+        // Bit 2: Instantaneous Cadence
         if (flags & 0x04) != 0 {
-            // Cadence
             if data.count >= offset + 2 {
-                let val = data.subdata(in: offset..<offset+2).withUnsafeBytes { $0.load(as: UInt16.self) }
-                let cadence = Int(Double(val) * 0.5)
+                let rawCadence = data.subdata(in: offset..<offset+2).withUnsafeBytes { $0.load(as: UInt16.self) }
+                // Resolution is 0.5 RPM
+                let cadence = Int(Double(rawCadence) / 2.0)
                 DispatchQueue.main.async { self.currentCadence = cadence }
-                offset += 2
             }
+            offset += 2
         }
         
         if (flags & 0x08) != 0 { offset += 2 } // Avg Cadence
