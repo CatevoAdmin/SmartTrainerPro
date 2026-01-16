@@ -1,0 +1,6 @@
+@SmartTrainerPro.Api_HostAddress = http://localhost:5223
+
+GET {{SmartTrainerPro.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
